@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signal — Personal Security Checkup</title>
+<style>
+  :root {
+    --bg:        #0e1418;
+    --panel:     #151e24;
+    --panel-2:   #1b262d;
+    --line:      #2a3a44;
+    --ink:       #e8eef0;
+    --muted:     #7e95a0;
+    --amber:     #f2a900;
+    --cyan:      #34d1c4;
+    --red:       #ff5d5d;
+    --green:     #4ad17a;
+    --mono: "SFMono-Regular", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--amber); color: #000; }
+  a { color: var(--cyan); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ---------- Header / Nav ---------- */
+  header {
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, #121b20, var(--bg));
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(8px);
+  }
+  .bar {
+    max-width: 980px; margin: 0 auto; padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .brand { display: flex; align-items: center; gap: 11px; }
+  .brand .dot {
+    width: 11px; height: 11px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 0 0 rgba(74,209,122,.6);
+    animation: pulse 2.4s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(74,209,122,.5); }
+    70% { box-shadow: 0 0 0 7px rgba(74,209,122,0); }
+    100% { box-shadow: 0 0 0 0 rgba(74,209,122,0); }
+  }
+  .brand b { font-family: var(--mono); font-size: 17px; letter-spacing: 1px; }
+  .brand span { color: var(--muted); font-size: 12px; font-family: var(--mono); }
+
+  nav { display: flex; gap: 4px; flex-wrap: wrap; }
+  nav button {
+    font-family: var(--mono); font-size: 12.5px;
+    background: transparent; color: var(--muted);
+    border: 1px solid transparent; border-radius: 6px;
+    padding: 7px 12px; cursor: pointer; transition: .15s;
+    letter-spacing: .3px;
+  }
+  nav button:hover { color: var(--ink); background: var(--panel-2); }
+  nav button.active { color: var(--bg); background: var(--amber); font-weight: 600; }
+
+  /* ---------- Layout ---------- */
+  main { max-width: 980px; margin: 0 auto; padding: 40px 20px 80px; }
+  .page { display: none; animation: fade .35s ease; }
+  .page.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .eyebrow {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 2.5px;
+    color: var(--amber); text-transform: uppercase; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .eyebrow::before { content: ""; width: 26px; height: 1px; background: var(--amber); }
+  h1 { font-size: 34px; line-height: 1.15; font-weight: 700; letter-spacing: -.5px; margin-bottom: 10px; }
+  h1 .accent { color: var(--cyan); }
+  .lede { color: var(--muted); font-size: 15.5px; max-width: 620px; margin-bottom: 32px; }
+
+  .panel {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 26px;
+  }
+  .panel + .panel { margin-top: 20px; }
+
+  /* ---------- Password tool ---------- */
+  .pw-wrap { position: relative; }
+  .pw-input {
+    width: 100%; font-family: var(--mono); font-size: 18px;
+    background: var(--bg); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 9px;
+    padding: 16px 50px 16px 16px; outline: none; transition: border .2s;
+  }
+  .pw-input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(52,209,196,.12); }
+  .pw-toggle {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    background: var(--panel-2); border: 1px solid var(--line); color: var(--muted);
+    border-radius: 6px; padding: 6px 9px; cursor: pointer; font-size: 12px; font-family: var(--mono);
+  }
+  .pw-toggle:hover { color: var(--ink); }
+
+  /* gauge */
+  .gauge { margin-top: 22px; }
+  .gauge-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .verdict { font-family: var(--mono); font-size: 15px; font-weight: 600; letter-spacing: .5px; }
+  .crack-time { text-align: right; }
+  .crack-time .num {
+    font-family: var(--mono); font-size: 26px; font-weight: 700; line-height: 1;
+    color: var(--cyan); transition: color .3s;
+  }
+  .crack-time .lbl { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: .5px; }
+  .meter { height: 10px; background: var(--bg); border-radius: 6px; overflow: hidden; border: 1px solid var(--line); }
+  .meter-fill { height: 100%; width: 0%; border-radius: 6px; transition: width .35s ease, background .35s; background: var(--red); }
+
+  /* live breakdown */
+  .breakdown { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr)); gap: 10px; margin-top: 22px; }
+  .stat { background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 13px 15px; }
+  .stat .k { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: .5px; text-transform: uppercase; }
+  .stat .v { font-family: var(--mono); font-size: 20px; font-weight: 700; margin-top: 3px; }
+  .chips { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .chip {
+    font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 5px;
+    border: 1px solid var(--line); color: var(--muted); opacity: .4; transition: .25s;
+  }
+  .chip.on { opacity: 1; color: var(--bg); background: var(--cyan); border-color: var(--cyan); }
+
+  .note { font-size: 13px; color: var(--muted); margin-top: 16px; padding-left: 14px; border-left: 2px solid var(--line); }
+
+  /* "each character" demo */
+  .demo-row { display: flex; align-items: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+  .demo-bars { display: flex; align-items: flex-end; gap: 5px; height: 80px; }
+  .demo-bars .b {
+    width: 26px; background: linear-gradient(180deg, var(--amber), #b87d00);
+    border-radius: 4px 4px 0 0; position: relative; transition: height .4s ease;
+  }
+  .demo-bars .b span {
+    position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
+    font-family: var(--mono); font-size: 10px; color: var(--muted); white-space: nowrap;
+  }
+
+  /* generic content blocks */
+  h2 { font-size: 21px; margin-bottom: 6px; letter-spacing: -.3px; }
+  h3 { font-family: var(--mono); font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: var(--amber); margin: 26px 0 12px; }
+  p.body { color: #c2d0d6; font-size: 15px; margin-bottom: 14px; }
+  p.body + p.body { margin-top: -2px; }
+
+  .callout { background: var(--panel-2); border-left: 3px solid var(--cyan); border-radius: 0 9px 9px 0; padding: 16px 18px; margin: 16px 0; font-size: 14.5px; }
+  .callout b { color: var(--cyan); }
+
+  /* IP page */
+  .ip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .ip-grid { grid-template-columns: 1fr; } }
+  .ip-card { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+  .ip-card .k { font-family: var(--mono); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .ip-card .v { font-family: var(--mono); font-size: 17px; margin-top: 6px; word-break: break-all; }
+  .ip-status { display: inline-flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 13px; margin-top: 4px; }
+  .ip-status .led { width: 8px; height: 8px; border-radius: 50%; }
+
+  .btn {
+    font-family: var(--mono); font-size: 13px; letter-spacing: .5px;
+    background: var(--amber); color: #000; border: none; border-radius: 8px;
+    padding: 11px 18px; cursor: pointer; font-weight: 600; transition: .15s;
+  }
+  .btn:hover { filter: brightness(1.08); }
+  .btn.ghost { background: transparent; color: var(--cyan); border: 1px solid var(--line); }
+  .btn.ghost:hover { border-color: var(--cyan); }
+
+  /* tool list (malware) */
+  .tool { display: flex; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+  .tool:last-child { border-bottom: none; }
+  .tool .rank { font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--amber); min-width: 34px; }
+  .tool .info h4 { font-size: 16px; margin-bottom: 3px; }
+  .tool .info p { font-size: 13.5px; color: var(--muted); }
+  .tool .tag { font-family: var(--mono); font-size: 10.5px; color: var(--cyan); border: 1px solid var(--line); border-radius: 5px; padding: 2px 7px; margin-top: 6px; display: inline-block; }
+
+  /* news */
+  .news-item { padding: 18px 0; border-bottom: 1px solid var(--line); }
+  .news-item:last-child { border-bottom: none; }
+  .news-item .date { font-family: var(--mono); font-size: 11px; color: var(--amber); letter-spacing: 1px; }
+  .news-item h4 { font-size: 16px; margin: 5px 0 4px; }
+  .news-item p { font-size: 13.5px; color: var(--muted); }
+
+  footer { border-top: 1px solid var(--line); margin-top: 40px; }
+  .foot { max-width: 980px; margin: 0 auto; padding: 22px 20px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .foot span { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+  .placeholder { color: var(--muted); font-family: var(--mono); font-size: 13px; text-align: center; padding: 40px 20px; border: 1px dashed var(--line); border-radius: 10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <div class="brand">
+      <div class="dot"></div>
+      <div>
+        <b>SIGNAL</b><br>
+        <span>security checkup</span>
+      </div>
+    </div>
+    <nav id="nav">
+      <button class="active" data-page="pw">PASSWORD</button>
+      <button data-page="ip">IP EXPOSURE</button>
+      <button data-page="tools">DEFENSES</button>
+      <button data-page="news">NEWS</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <!-- ===================== PASSWORD ===================== -->
+  <section class="page active" id="page-pw">
+    <div class="eyebrow">Diagnostic 01</div>
+    <h1>How long would your password <span class="accent">survive?</span></h1>
+    <p class="lede">Type a password below. Nothing is sent anywhere — every calculation runs inside your browser. Watch the estimated time-to-crack change with every character you add.</p>
+
+    <div class="panel">
+      <div class="pw-wrap">
+        <input type="password" class="pw-input" id="pw" placeholder="Type a password to test…" autocomplete="off" spellcheck="false">
+        <button class="pw-toggle" id="toggle">show</button>
+      </div>
+
+      <div class="gauge">
+        <div class="gauge-top">
+          <div class="verdict" id="verdict">Awaiting input</div>
+          <div class="crack-time">
+            <div class="num" id="crackNum">—</div>
+            <div class="lbl" id="crackLbl">to brute-force offline</div>
+          </div>
+        </div>
+        <div class="meter"><div class="meter-fill" id="meterFill"></div></div>
+      </div>
+
+      <div class="breakdown">
+        <div class="stat"><div class="k">Length</div><div class="v" id="sLen">0</div></div>
+        <div class="stat"><div class="k">Pool size</div><div class="v" id="sPool">0</div></div>
+        <div class="stat"><div class="k">Entropy</div><div class="v" id="sEnt">0 <small style="font-size:11px;color:var(--muted)">bits</small></div></div>
+        <div class="stat">
+          <div class="k">Character sets</div>
+          <div class="chips">
+            <span class="chip" id="c-lower">a-z</span>
+            <span class="chip" id="c-upper">A-Z</span>
+            <span class="chip" id="c-num">0-9</span>
+            <span class="chip" id="c-sym">!@#</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="note" id="warnNote" style="display:none"></p>
+    </div>
+
+    <div class="panel">
+      <h2>Every character multiplies the work</h2>
+      <p class="body">A brute-force attack tries every possible combination. Each character you add doesn't just add to the difficulty — it multiplies it by the size of your character pool. Add one symbol to a lowercase password and the attacker's job gets <b style="color:var(--cyan)">far</b> bigger.</p>
+      <div class="demo-row">
+        <div class="demo-bars" id="demoBars">
+          <div class="b" style="height:14px"><span>8 chars</span></div>
+          <div class="b" style="height:26px"><span>+1</span></div>
+          <div class="b" style="height:46px"><span>+2</span></div>
+          <div class="b" style="height:80px"><span>+3</span></div>
+        </div>
+        <p class="body" style="flex:1; min-width:200px; margin:0;">With a full keyboard (95 characters), each extra character makes brute-forcing roughly <b style="color:var(--amber)">95× longer</b>. Going from 8 to 11 characters is about <b style="color:var(--amber)">857,000×</b> harder — not 3× harder.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Why the world is moving to passphrases</h2>
+      <p class="body">Length beats complexity. A long string of ordinary words is easier for you to remember and harder for a machine to crack than a short scramble of symbols. <span class="mono"></span></p>
+      <div class="callout">
+        <b>correct-horse-battery-staple</b> — 28 characters, trivial to remember, and would take a modern offline cracker an astronomically long time. Compare that to <b>P@ss1!</b>, which falls in seconds.
+      </div>
+      <p class="body">Modern guidance from NIST now <b>encourages length, discourages forced periodic resets, and drops the old "must contain a symbol" rules</b> in favor of longer passphrases checked against known-breached lists. Four or five random words, a password manager, and unique passwords per site is the practical winning combination.</p>
+    </div>
+  </section>
+
+  <!-- ===================== IP ===================== -->
+  <section class="page" id="page-ip">
+    <div class="eyebrow">Diagnostic 02</div>
+    <h1>What your connection <span class="accent">reveals</span></h1>
+    <p class="lede">Every time you load a website, your device hands over more than you'd think. Here's what this site can see about your connection right now — and what it means.</p>
+
+    <div class="panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
+        <h2 style="margin:0">Your connection fingerprint</h2>
+        <button class="btn" id="ipScan">Run scan</button>
+      </div>
+      <div class="ip-grid" id="ipGrid">
+        <div class="ip-card"><div class="k">Public IP address</div><div class="v" id="ipAddr">— press “Run scan”</div></div>
+        <div class="ip-card"><div class="k">Approx. location</div><div class="v" id="ipLoc">—</div></div>
+        <div class="ip-card"><div class="k">Internet provider</div><div class="v" id="ipOrg">—</div></div>
+        <div class="ip-card"><div class="k">Exposure status</div><div class="ip-status" id="ipStat"><span class="led" style="background:var(--muted)"></span><span>not scanned</span></div></div>
+      </div>
+      <p class="note">Your public IP is visible to every website, email server, and online game you connect to. On its own it's not a password — but combined with other data it can reveal your rough location and ISP, and it's what attackers probe when scanning for open ports.</p>
+    </div>
+
+    <div class="panel">
+      <h2>What someone can — and can't — do with it</h2>
+      <h3>They generally can</h3>
+      <p class="body">See your approximate city and ISP, attempt to scan your network for exposed services, target you with denial-of-service traffic, and correlate your activity across sites that log IPs.</p>
+      <h3>They generally cannot</h3>
+      <p class="body">Read your messages, get your home address from the IP alone, or log into your accounts. The IP is a starting point for an attacker, not a skeleton key.</p>
+      <div class="callout"><b>Lower your exposure:</b> use a reputable VPN on public Wi-Fi, keep your router firmware updated, disable UPnP and port-forwarding you don't need, and turn on your firewall. For a business, put guest Wi-Fi on a separate network from your point-of-sale and back-office machines.</div>
+    </div>
+  </section>
+
+  <!-- ===================== DEFENSES ===================== -->
+  <section class="page" id="page-tools">
+    <div class="eyebrow">Diagnostic 03</div>
+    <h1>Defenses that actually <span class="accent">earn their keep</span></h1>
+    <p class="lede">Antivirus is one layer, not a force field. These are well-regarded options — but the habits below them matter more than any single product.</p>
+
+    <div class="panel">
+      <h2>Reputable security software</h2>
+      <p class="body" style="margin-bottom:18px;">A starting shortlist for individuals and small businesses. Test independently (AV-TEST, AV-Comparatives) before standardizing on one.</p>
+
+      <div class="tool"><div class="rank">1</div><div class="info"><h4>Bitdefender</h4><p>Consistently top independent detection scores with light system impact. Strong small-business tier.</p><span class="tag">individual + business</span></div></div>
+      <div class="tool"><div class="rank">2</div><div class="info"><h4>Microsoft Defender</h4><p>Built into Windows, free, and genuinely competitive now. For many users it's enough on its own.</p><span class="tag">free / built-in</span></div></div>
+      <div class="tool"><div class="rank">3</div><div class="info"><h4>Malwarebytes</h4><p>Excellent as a second-opinion scanner and at cleaning active infections. Pairs well with Defender.</p><span class="tag">cleanup specialist</span></div></div>
+      <div class="tool"><div class="rank">4</div><div class="info"><h4>ESET</h4><p>Lightweight, low false-positives, favored on older or lower-spec machines. Solid endpoint management.</p><span class="tag">low overhead</span></div></div>
+      <div class="tool"><div class="rank">5</div><div class="info"><h4>1Password / Bitwarden</h4><p>Not antivirus — a password manager. Arguably does more for your security than any AV. Bitwarden has a free tier.</p><span class="tag">password manager</span></div></div>
+
+      <p class="note">Avoid pirated or "free key" versions of paid security tools — they're a classic malware delivery method. Buy direct from the vendor.</p>
+    </div>
+
+    <div class="panel">
+      <h2>The habits that beat any product</h2>
+      <p class="body">Turn on automatic updates, use a password manager with unique passwords, enable two-factor authentication everywhere it's offered, keep offline backups of anything you can't lose, and learn to spot phishing — most breaches start with a click, not a hack.</p>
+    </div>
+  </section>
+
+  <!-- ===================== NEWS ===================== -->
+  <section class="page" id="page-news">
+    <div class="eyebrow">Diagnostic 04</div>
+    <h1>Security news, <span class="accent">decoded</span></h1>
+    <p class="lede">Plain-language summaries of what's happening in security and what it means for you. This section is built to be updated — swap in fresh items as stories break.</p>
+
+    <div class="panel">
+      <h2>Recent items</h2>
+      <div class="news-item"><div class="date">EXAMPLE ENTRY</div><h4>Replace these with current headlines</h4><p>Each entry is a date, a headline, and a two-sentence "why it matters for you." Keep the jargon out — your audience is the shop owner, not the SOC analyst.</p></div>
+      <div class="news-item"><div class="date">HOW TO UPDATE</div><h4>Edit the news section in index.html</h4><p>Find the “news-item” blocks and paste in new ones. Later you can wire this tab to a live feed or a simple JSON file you push to GitHub.</p></div>
+      <div class="news-item"><div class="date">CONTENT IDEA</div><h4>Tie stories back to your other tabs</h4><p>A big password breach in the news is a natural reason to send someone to the Password tab. Cross-link your own pages.</p></div>
+    </div>
+
+    <div class="panel">
+      <div class="placeholder">+ Future tab slot — add new diagnostics here as you build them.<br>Ideas: phishing email quiz · data-breach lookup · 2FA setup walkthrough · Wi-Fi security checklist</div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="foot">
+    <span>SIGNAL — runs entirely in your browser. No data leaves this page.</span>
+    <span>built for awareness, not a guarantee</span>
+  </div>
+</footer>
+
+<script>
+/* ---------------- Navigation ---------------- */
+const nav = document.getElementById('nav');
+nav.addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('page-' + btn.dataset.page).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+/* ---------------- Password analysis ---------------- */
+const pw = document.getElementById('pw');
+const toggle = document.getElementById('toggle');
+toggle.addEventListener('click', () => {
+  const showing = pw.type === 'text';
+  pw.type = showing ? 'password' : 'text';
+  toggle.textContent = showing ? 'show' : 'hide';
+});
+
+const GUESSES_PER_SEC = 1e11; // ~100 billion/sec: a strong offline GPU rig
+const COMMON = ['password','123456','qwerty','letmein','admin','welcome','iloveyou','12345678','abc123','111111','monkey','dragon','sunshine','princess','football'];
+
+function analyze(p) {
+  let pool = 0;
+  const hasLower = /[a-z]/.test(p);
+  const hasUpper = /[A-Z]/.test(p);
+  const hasNum   = /[0-9]/.test(p);
+  const hasSym   = /[^A-Za-z0-9]/.test(p);
+  if (hasLower) pool += 26;
+  if (hasUpper) pool += 26;
+  if (hasNum)   pool += 10;
+  if (hasSym)   pool += 33;
+
+  const len = p.length;
+  const entropy = len > 0 && pool > 0 ? len * Math.log2(pool) : 0;
+  const guesses = Math.pow(pool, len) / 2; // average half the space
+  const seconds = guesses / GUESSES_PER_SEC;
+
+  return { pool, len, entropy, seconds, hasLower, hasUpper, hasNum, hasSym };
+}
+
+function humanTime(sec) {
+  if (sec < 1e-3) return { num: 'Instant', lbl: 'cracked immediately' };
+  const units = [
+    ['second', 1], ['minute', 60], ['hour', 3600], ['day', 86400],
+    ['year', 31557600], ['century', 3155760000],
+  ];
+  if (sec < 60) return { num: sec < 1 ? '< 1' : Math.round(sec), lbl: 'seconds to crack' };
+  let val = sec, name = 'seconds';
+  for (let i = units.length - 1; i >= 0; i--) {
+    if (sec >= units[i][1]) { val = sec / units[i][1]; name = units[i][0]; break; }
+  }
+  if (val >= 1e6) {
+    const exp = Math.floor(Math.log10(val));
+    return { num: '10^' + exp, lbl: name + 's to crack' };
+  }
+  const rounded = val >= 100 ? Math.round(val) : val.toFixed(1);
+  return { num: rounded, lbl: (rounded == 1 ? name : name + 's') + ' to crack' };
+}
+
+const els = {
+  verdict: document.getElementById('verdict'),
+  crackNum: document.getElementById('crackNum'),
+  crackLbl: document.getElementById('crackLbl'),
+  fill: document.getElementById('meterFill'),
+  len: document.getElementById('sLen'),
+  pool: document.getElementById('sPool'),
+  ent: document.getElementById('sEnt'),
+  warn: document.getElementById('warnNote'),
+};
+const chips = {
+  lower: document.getElementById('c-lower'),
+  upper: document.getElementById('c-upper'),
+  num: document.getElementById('c-num'),
+  sym: document.getElementById('c-sym'),
+};
+
+function tierColor(entropy) {
+  if (entropy < 28)  return { c: 'var(--red)',   t: 'Very weak',  w: 14 };
+  if (entropy < 40)  return { c: '#ff8a3d',       t: 'Weak',       w: 34 };
+  if (entropy < 60)  return { c: 'var(--amber)',  t: 'Reasonable', w: 58 };
+  if (entropy < 80)  return { c: 'var(--green)',  t: 'Strong',     w: 80 };
+  return               { c: 'var(--cyan)',   t: 'Very strong', w: 100 };
+}
+
+function render() {
+  const p = pw.value;
+  if (!p) {
+    els.verdict.textContent = 'Awaiting input';
+    els.crackNum.textContent = '—'; els.crackNum.style.color = 'var(--cyan)';
+    els.crackLbl.textContent = 'to brute-force offline';
+    els.fill.style.width = '0%'; els.fill.style.background = 'var(--red)';
+    els.len.textContent = '0'; els.pool.textContent = '0'; els.ent.innerHTML = '0 <small style="font-size:11px;color:var(--muted)">bits</small>';
+    Object.values(chips).forEach(c => c.classList.remove('on'));
+    els.warn.style.display = 'none';
+    return;
+  }
+  const a = analyze(p);
+  const t = tierColor(a.entropy);
+  const time = humanTime(a.seconds);
+
+  els.verdict.textContent = t.t;
+  els.verdict.style.color = t.c;
+  els.crackNum.textContent = time.num;
+  els.crackNum.style.color = t.c;
+  els.crackLbl.textContent = time.lbl;
+  els.fill.style.width = t.w + '%';
+  els.fill.style.background = t.c;
+
+  els.len.textContent = a.len;
+  els.pool.textContent = a.pool;
+  els.ent.innerHTML = Math.round(a.entropy) + ' <small style="font-size:11px;color:var(--muted)">bits</small>';
+
+  chips.lower.classList.toggle('on', a.hasLower);
+  chips.upper.classList.toggle('on', a.hasUpper);
+  chips.num.classList.toggle('on', a.hasNum);
+  chips.sym.classList.toggle('on', a.hasSym);
+
+  // warnings
+  let warn = '';
+  const low = p.toLowerCase();
+  if (COMMON.some(w => low === w || low.includes(w))) {
+    warn = '⚠ This contains a very common password pattern — it would be guessed almost instantly regardless of length, because crackers try these first.';
+  } else if (a.len < 8) {
+    warn = '⚠ Under 8 characters. Even with symbols, short passwords fall quickly. Aim for length first.';
+  } else if (!a.hasSym && !a.hasNum && a.len < 16) {
+    warn = 'Tip: a few random words (a passphrase) would push this far higher with little effort to remember.';
+  }
+  if (warn) { els.warn.textContent = warn; els.warn.style.display = 'block'; }
+  else els.warn.style.display = 'none';
+}
+pw.addEventListener('input', render);
+
+/* ---------------- IP scan ---------------- */
+const ipBtn = document.getElementById('ipScan');
+ipBtn.addEventListener('click', async () => {
+  ipBtn.textContent = 'Scanning…'; ipBtn.disabled = true;
+  const set = (id, v) => document.getElementById(id).textContent = v;
+  try {
+    const r = await fetch('https://ipapi.co/json/');
+    if (!r.ok) throw new Error('lookup failed');
+    const d = await r.json();
+    set('ipAddr', d.ip || 'unknown');
+    set('ipLoc', [d.city, d.region, d.country_name].filter(Boolean).join(', ') || 'unknown');
+    set('ipOrg', d.org || 'unknown');
+    const stat = document.getElementById('ipStat');
+    stat.innerHTML = '<span class="led" style="background:var(--amber)"></span><span>visible to every site you visit</span>';
+  } catch (err) {
+    set('ipAddr', 'Lookup blocked');
+    set('ipLoc', '—'); set('ipOrg', '—');
+    const stat = document.getElementById('ipStat');
+    stat.innerHTML = '<span class="led" style="background:var(--red)"></span><span>request blocked (ad-blocker or offline)</span>';
+  } finally {
+    ipBtn.textContent = 'Run scan'; ipBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
