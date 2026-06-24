@@ -193,6 +193,47 @@
   .foot span { font-family: var(--mono); font-size: 12px; color: var(--muted); }
 
   .placeholder { color: var(--muted); font-family: var(--mono); font-size: 13px; text-align: center; padding: 40px 20px; border: 1px dashed var(--line); border-radius: 10px; }
+
+  /* ---------- Phishing quiz ---------- */
+  .quiz-progress { font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: 1px; margin-bottom: 14px; }
+  .mailcard { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .mailcard .mh { padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .mailcard .mh .row { display: flex; gap: 8px; font-size: 13.5px; padding: 2px 0; }
+  .mailcard .mh .row .lab { color: var(--muted); font-family: var(--mono); font-size: 12px; min-width: 52px; }
+  .mailcard .mh .row .val { color: var(--ink); word-break: break-all; }
+  .mailcard .mb { padding: 18px 16px; font-size: 14.5px; color: #c2d0d6; line-height: 1.6; }
+  .mailcard .mb a { pointer-events: none; }
+  .verdict-btns { display: flex; gap: 12px; margin-top: 18px; }
+  .verdict-btns .btn { flex: 1; }
+  .vbtn-safe { background: var(--green) !important; color: #08210f !important; }
+  .vbtn-phish { background: var(--red) !important; color: #2a0808 !important; }
+  .quiz-feedback { margin-top: 18px; padding: 16px 18px; border-radius: 9px; font-size: 14.5px; display: none; }
+  .quiz-feedback.show { display: block; animation: fade .3s ease; }
+  .quiz-feedback.correct { background: rgba(74,209,122,.1); border: 1px solid var(--green); }
+  .quiz-feedback.wrong { background: rgba(255,93,93,.1); border: 1px solid var(--red); }
+  .quiz-feedback .ftitle { font-family: var(--mono); font-weight: 700; letter-spacing: .5px; margin-bottom: 6px; }
+  .quiz-feedback ul { margin: 8px 0 0 18px; color: #c2d0d6; }
+  .quiz-feedback li { margin: 4px 0; font-size: 13.5px; }
+  .quiz-score { font-family: var(--mono); font-size: 15px; }
+  .quiz-score b { color: var(--cyan); font-size: 22px; }
+
+  /* ---------- Checklist (2FA / Wi-Fi) ---------- */
+  .check-item { display: flex; gap: 13px; padding: 15px 0; border-bottom: 1px solid var(--line); align-items: flex-start; cursor: pointer; }
+  .check-item:last-child { border-bottom: none; }
+  .check-box {
+    width: 22px; height: 22px; min-width: 22px; border: 1.5px solid var(--line); border-radius: 6px;
+    margin-top: 1px; display: flex; align-items: center; justify-content: center;
+    transition: .15s; font-size: 14px; color: transparent;
+  }
+  .check-item.done .check-box { background: var(--green); border-color: var(--green); color: #08210f; }
+  .check-item .ctext h4 { font-size: 15.5px; margin-bottom: 3px; transition: .15s; }
+  .check-item.done .ctext h4 { color: var(--muted); text-decoration: line-through; }
+  .check-item .ctext p { font-size: 13px; color: var(--muted); }
+  .score-ring { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  .score-num { font-family: var(--mono); font-size: 40px; font-weight: 700; line-height: 1; transition: color .3s; }
+  .score-bar { flex: 1; min-width: 160px; height: 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .score-fill { height: 100%; width: 0%; border-radius: 6px; background: var(--amber); transition: width .4s ease, background .4s; }
+  .score-label { font-family: var(--mono); font-size: 13px; color: var(--muted); margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -209,6 +250,9 @@
     <nav id="nav">
       <button class="active" data-page="pw">PASSWORD</button>
       <button data-page="ip">IP EXPOSURE</button>
+      <button data-page="phish">PHISHING</button>
+      <button data-page="twofa">ACCOUNTS</button>
+      <button data-page="wifi">WI-FI</button>
       <button data-page="tools">DEFENSES</button>
       <button data-page="news">NEWS</button>
     </nav>
@@ -314,7 +358,7 @@
 
   <!-- ===================== DEFENSES ===================== -->
   <section class="page" id="page-tools">
-    <div class="eyebrow">Diagnostic 03</div>
+    <div class="eyebrow">Diagnostic 06</div>
     <h1>Defenses that actually <span class="accent">earn their keep</span></h1>
     <p class="lede">Antivirus is one layer, not a force field. These are well-regarded options — but the habits below them matter more than any single product.</p>
 
@@ -337,9 +381,80 @@
     </div>
   </section>
 
+  <!-- ===================== PHISHING ===================== -->
+  <section class="page" id="page-phish">
+    <div class="eyebrow">Diagnostic 03</div>
+    <h1>Can you spot the <span class="accent">fake?</span></h1>
+    <p class="lede">Most breaches start with one click on a convincing email. Read each message, decide if it's safe or a phishing attempt, then see what gave it away.</p>
+
+    <div class="panel">
+      <div class="quiz-progress" id="phishProgress">MESSAGE 1 OF 5 · SCORE 0</div>
+      <div class="mailcard">
+        <div class="mh" id="mailHead"></div>
+        <div class="mb" id="mailBody"></div>
+      </div>
+      <div class="verdict-btns" id="verdictBtns">
+        <button class="btn vbtn-safe" id="btnSafe">Looks legit</button>
+        <button class="btn vbtn-phish" id="btnPhish">It's phishing</button>
+      </div>
+      <div class="quiz-feedback" id="phishFeedback"></div>
+      <button class="btn ghost" id="phishNext" style="display:none; margin-top:18px; width:100%;">Next message →</button>
+    </div>
+
+    <div class="panel">
+      <h2>The red flags that repeat</h2>
+      <p class="body">Almost every phishing message leans on the same handful of tricks: a sense of urgency ("act now or lose access"), a sender address that's almost-but-not-quite right, links whose visible text doesn't match where they actually go, requests for credentials or payment, and generic greetings. When two or more show up together, slow down.</p>
+    </div>
+  </section>
+
+  <!-- ===================== ACCOUNTS / 2FA ===================== -->
+  <section class="page" id="page-twofa">
+    <div class="eyebrow">Diagnostic 04</div>
+    <h1>How locked-down are your <span class="accent">accounts?</span></h1>
+    <p class="lede">A password alone is one wall. These are the layers that stop an attacker even when your password leaks. Check off what you already do — your score updates live.</p>
+
+    <div class="panel">
+      <div class="score-ring">
+        <div class="score-num" id="twofaScore" style="color:var(--red)">0%</div>
+        <div style="flex:1; min-width:160px;">
+          <div class="score-bar"><div class="score-fill" id="twofaFill"></div></div>
+          <div class="score-label" id="twofaLabel">Check items below to begin</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Your hardening checklist</h2>
+      <div id="twofaList"></div>
+    </div>
+  </section>
+
+  <!-- ===================== WI-FI ===================== -->
+  <section class="page" id="page-wifi">
+    <div class="eyebrow">Diagnostic 05</div>
+    <h1>Is your network <span class="accent">leaking?</span></h1>
+    <p class="lede">Your router is the front door to every device you own. Most people never change a setting after install. Walk this self-audit — for your home or your business.</p>
+
+    <div class="panel">
+      <div class="score-ring">
+        <div class="score-num" id="wifiScore" style="color:var(--red)">0%</div>
+        <div style="flex:1; min-width:160px;">
+          <div class="score-bar"><div class="score-fill" id="wifiFill"></div></div>
+          <div class="score-label" id="wifiLabel">Check items below to begin</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Router & network self-audit</h2>
+      <div id="wifiList"></div>
+      <p class="note">To reach most router settings, type <b>192.168.1.1</b> or <b>192.168.0.1</b> into your browser. If you've never logged in, the password may still be the factory default printed on the device — which is itself the first thing to fix.</p>
+    </div>
+  </section>
+
   <!-- ===================== NEWS ===================== -->
   <section class="page" id="page-news">
-    <div class="eyebrow">Diagnostic 04</div>
+    <div class="eyebrow">Diagnostic 07</div>
     <h1>Security news, <span class="accent">decoded</span></h1>
     <p class="lede">Plain-language summaries of what's happening in security and what it means for you. This section is built to be updated — swap in fresh items as stories break.</p>
 
@@ -500,7 +615,203 @@ function render() {
 }
 pw.addEventListener('input', render);
 
-/* ---------------- IP scan ---------------- */
+/* ---------------- Phishing quiz ---------------- */
+const phishData = [
+  {
+    from: 'Netflix &lt;no-reply@netffix-billing.com&gt;',
+    subject: 'Your account is on hold',
+    to: 'you@email.com',
+    body: 'Dear Customer,<br><br>We were unable to process your last payment. Your account has been suspended. <a href="#">Update your payment details within 24 hours</a> to avoid permanent cancellation.<br><br>— The Netflix Team',
+    phish: true,
+    flags: ['Sender domain is "netffix-billing.com" — a misspelled lookalike, not netflix.com', 'Manufactured urgency: "within 24 hours" or lose your account', 'Generic "Dear Customer" instead of your name', 'Asks you to update payment via a link rather than the app']
+  },
+  {
+    from: 'GitHub &lt;noreply@github.com&gt;',
+    subject: '[GitHub] A new SSH key was added',
+    to: 'cammaso@email.com',
+    body: 'Hi cammaso,<br><br>A new SSH key was added to your account. If you did this, no action is needed. If you didn\'t, you can <a href="#">review your keys</a> and revoke it from your settings.<br><br>Thanks,<br>The GitHub Team',
+    phish: false,
+    flags: ['Legitimate sender domain (github.com)', 'Addresses you by your real username', 'No urgency or threat — just an informational notice', 'Gives a calm, reversible next step rather than demanding action']
+  },
+  {
+    from: 'IT Help Desk &lt;support@microsoft-secure-login.net&gt;',
+    subject: 'Unusual sign-in — verify now',
+    to: 'you@email.com',
+    body: 'We detected a sign-in from a new device in another country. To keep your account safe, <a href="#">verify your identity here</a> by entering your username, password, and the code from your authenticator.<br><br>Microsoft Account Team',
+    phish: true,
+    flags: ['Domain "microsoft-secure-login.net" is not microsoft.com', 'Asks you to enter your password AND your 2FA code on a linked page — a real site never needs you to hand over a live code', 'Fear-based hook about a foreign sign-in', 'A legit alert links you to the official site, not a one-off domain']
+  },
+  {
+    from: 'Donut Palace Payroll &lt;payroll@donutpalace.biz&gt;',
+    subject: 'Re: updated direct deposit form',
+    to: 'you@email.com',
+    body: 'Hey,<br><br>Quick one before the cutoff — I need to change my direct deposit to a new bank. Can you update my info with the attached account/routing number for this Friday\'s run? Appreciate it.<br><br>Thanks!',
+    phish: true,
+    flags: ['Classic payroll-diversion / business email compromise', 'Pressure tied to a deadline ("before the cutoff")', 'Requests a banking change over email with no verification', 'Even if the name looks familiar, changes like this need a phone or in-person confirmation']
+  },
+  {
+    from: 'Bitwarden &lt;no-reply@bitwarden.com&gt;',
+    subject: 'Your verification code',
+    to: 'you@email.com',
+    body: 'Your one-time verification code is <b>492 015</b>. Enter it in the app to finish signing in. This code expires in 5 minutes. If you didn\'t try to sign in, change your master password.',
+    phish: false,
+    flags: ['Legitimate sender domain', 'Delivers a code for YOU to type into the app — it never asks you to send the code back or click a link', 'Clear, specific guidance if it wasn\'t you', 'No links to click at all — the safest pattern']
+  }
+];
+
+let phishIdx = 0, phishScore = 0, phishAnswered = false;
+const ph = {
+  prog: document.getElementById('phishProgress'),
+  head: document.getElementById('mailHead'),
+  body: document.getElementById('mailBody'),
+  fb: document.getElementById('phishFeedback'),
+  next: document.getElementById('phishNext'),
+  btns: document.getElementById('verdictBtns'),
+  safe: document.getElementById('btnSafe'),
+  phishBtn: document.getElementById('btnPhish'),
+};
+
+function renderPhish() {
+  const m = phishData[phishIdx];
+  ph.prog.textContent = `MESSAGE ${phishIdx + 1} OF ${phishData.length} · SCORE ${phishScore}`;
+  ph.head.innerHTML = `
+    <div class="row"><span class="lab">From</span><span class="val">${m.from}</span></div>
+    <div class="row"><span class="lab">To</span><span class="val">${m.to}</span></div>
+    <div class="row"><span class="lab">Subject</span><span class="val">${m.subject}</span></div>`;
+  ph.body.innerHTML = m.body;
+  ph.fb.className = 'quiz-feedback';
+  ph.fb.innerHTML = '';
+  ph.next.style.display = 'none';
+  ph.btns.style.display = 'flex';
+  phishAnswered = false;
+}
+
+function answerPhish(saidPhish) {
+  if (phishAnswered) return;
+  phishAnswered = true;
+  const m = phishData[phishIdx];
+  const correct = (saidPhish === m.phish);
+  if (correct) phishScore++;
+  ph.prog.textContent = `MESSAGE ${phishIdx + 1} OF ${phishData.length} · SCORE ${phishScore}`;
+  ph.btns.style.display = 'none';
+  ph.fb.className = 'quiz-feedback show ' + (correct ? 'correct' : 'wrong');
+  const verdictWord = m.phish ? 'PHISHING' : 'LEGITIMATE';
+  ph.fb.innerHTML = `
+    <div class="ftitle" style="color:${correct ? 'var(--green)' : 'var(--red)'}">
+      ${correct ? '✓ Correct' : '✗ Not quite'} — this one is ${verdictWord}
+    </div>
+    <ul>${m.flags.map(f => `<li>${f}</li>`).join('')}</ul>`;
+  ph.next.style.display = 'block';
+  ph.next.textContent = phishIdx < phishData.length - 1 ? 'Next message →' : 'See your result →';
+}
+
+ph.safe.addEventListener('click', () => answerPhish(false));
+ph.phishBtn.addEventListener('click', () => answerPhish(true));
+ph.next.addEventListener('click', () => {
+  if (phishIdx < phishData.length - 1) {
+    phishIdx++;
+    renderPhish();
+  } else {
+    // final screen
+    ph.btns.style.display = 'none';
+    ph.next.style.display = 'none';
+    let msg;
+    if (phishScore === phishData.length) msg = 'Perfect score. You\'ve got a sharp eye — now teach someone else.';
+    else if (phishScore >= 3) msg = 'Solid instincts. Re-read the ones you missed; the tricks repeat in real inboxes.';
+    else msg = 'Worth practicing. The good news: spotting two or three red flags per message is a learnable habit.';
+    ph.fb.className = 'quiz-feedback show correct';
+    ph.fb.innerHTML = `<div class="quiz-score">You spotted <b>${phishScore}/${phishData.length}</b> correctly.</div><p style="margin-top:10px;color:#c2d0d6;font-size:14px;">${msg}</p><button class="btn ghost" id="phishRestart" style="margin-top:16px;">Try again</button>`;
+    document.getElementById('phishRestart').addEventListener('click', () => {
+      phishIdx = 0; phishScore = 0; renderPhish();
+    });
+  }
+});
+renderPhish();
+
+/* ---------------- Generic checklist builder ---------------- */
+function buildChecklist(listEl, scoreEl, fillEl, labelEl, items, labels) {
+  const state = new Array(items.length).fill(false);
+  listEl.innerHTML = items.map((it, i) => `
+    <div class="check-item" data-i="${i}">
+      <div class="check-box">✓</div>
+      <div class="ctext"><h4>${it.t}</h4><p>${it.d}</p></div>
+    </div>`).join('');
+
+  function update() {
+    const done = state.filter(Boolean).length;
+    const pct = Math.round(done / items.length * 100);
+    scoreEl.textContent = pct + '%';
+    fillEl.style.width = pct + '%';
+    let color;
+    if (pct < 34) color = 'var(--red)';
+    else if (pct < 67) color = 'var(--amber)';
+    else if (pct < 100) color = 'var(--green)';
+    else color = 'var(--cyan)';
+    scoreEl.style.color = color;
+    fillEl.style.background = color;
+    labelEl.textContent = labels(done, items.length, pct);
+  }
+
+  listEl.querySelectorAll('.check-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const i = +el.dataset.i;
+      state[i] = !state[i];
+      el.classList.toggle('done', state[i]);
+      update();
+    });
+  });
+  update();
+}
+
+/* ---------------- 2FA checklist ---------------- */
+buildChecklist(
+  document.getElementById('twofaList'),
+  document.getElementById('twofaScore'),
+  document.getElementById('twofaFill'),
+  document.getElementById('twofaLabel'),
+  [
+    { t: 'I use a password manager', d: 'So every account gets a long, unique password you don\'t have to remember.' },
+    { t: 'My passwords are unique per site', d: 'One leaked site can\'t unlock the others — this stops credential-stuffing attacks.' },
+    { t: '2FA is on for email', d: 'Your email resets every other password. Protect it first and hardest.' },
+    { t: '2FA is on for banking & finance', d: 'The accounts with direct money access deserve the strongest locks.' },
+    { t: 'I use an authenticator app, not SMS', d: 'App codes (or passkeys) resist SIM-swap attacks that defeat text-message codes.' },
+    { t: 'I\'ve saved my backup/recovery codes', d: 'Stored offline, so a lost phone doesn\'t lock you out of your own accounts.' },
+    { t: 'I\'ve checked my email at a breach-lookup service', d: 'Knowing which of your accounts were exposed tells you what to change now.' },
+  ],
+  (done, total, pct) => {
+    if (pct === 100) return 'Fully hardened. This is the standard pros hold themselves to.';
+    if (pct >= 67) return 'Strong. Close the last gaps and you\'re ahead of almost everyone.';
+    if (pct >= 34) return 'Getting there — prioritize email 2FA next.';
+    if (done > 0) return 'A start. Email 2FA and a password manager are the biggest wins.';
+    return 'Check items below to begin';
+  }
+);
+
+/* ---------------- Wi-Fi checklist ---------------- */
+buildChecklist(
+  document.getElementById('wifiList'),
+  document.getElementById('wifiScore'),
+  document.getElementById('wifiFill'),
+  document.getElementById('wifiLabel'),
+  [
+    { t: 'I changed the router admin password', d: 'The factory default is printed online for every model — change it first.' },
+    { t: 'My Wi-Fi uses WPA3 (or at least WPA2)', d: 'Older WEP/WPA encryption is trivially broken. Set this in wireless security settings.' },
+    { t: 'Router firmware is up to date', d: 'Updates patch the exact holes attackers scan for. Enable auto-update if offered.' },
+    { t: 'I have a separate guest network', d: 'Keeps visitors\' devices — and a business\'s customers — off your main network.' },
+    { t: 'UPnP is turned off', d: 'It can silently open ports to the internet. Disable unless you have a specific need.' },
+    { t: 'Remote/WAN admin access is disabled', d: 'Stops anyone from reaching your router\'s login page from the open internet.' },
+    { t: 'WPS is turned off', d: 'The push-button pairing feature has known brute-force weaknesses.' },
+    { t: 'Business: POS is on its own network', d: 'Point-of-sale and back-office machines should never share the guest or general Wi-Fi.' },
+  ],
+  (done, total, pct) => {
+    if (pct === 100) return 'Locked down. Your front door is bolted.';
+    if (pct >= 63) return 'Good shape. Knock out the rest this week.';
+    if (pct >= 38) return 'Halfway — the admin password and WPA3 are the critical two.';
+    if (done > 0) return 'Start with the admin password; it\'s the biggest single risk.';
+    return 'Check items below to begin';
+  }
+);
+
 const ipBtn = document.getElementById('ipScan');
 ipBtn.addEventListener('click', async () => {
   ipBtn.textContent = 'Scanning…'; ipBtn.disabled = true;
